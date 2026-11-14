@@ -33,10 +33,17 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
 }
 
 function direction(r: TestResult): Direction {
-  if (/^(HH|LL|CRITICAL|CRIT|PANIC)$/i.test(r.labFlag ?? "")) return "critical";
+  const why = r.statusReason ?? "";
+  if (why === "critical_flag" || /^(HH|LL|CRITICAL|CRIT|PANIC)$/i.test(r.labFlag ?? "")) return "critical";
+  if (why === "critical_threshold") return "threshold";
+  if (why === "needs_age") return "needsAge";
+  if (why === "needs_sex") return "needsSex";
+  if (why === "needs_age_sex") return "needsAgeSex";
+  if (why === "unit_unconvertible") return "unitUnconvertible";
   if (r.status === "within") return "within";
   if (r.valueNum !== null && r.refLow !== null && r.valueNum < r.refLow) return "below";
   if (r.valueNum !== null && r.refHigh !== null && r.valueNum > r.refHigh) return "above";
+  if (why === "not_classifiable") return "cannot";
   if (r.status === "unknown") return "none";
   return "flagged";
 }
@@ -66,6 +73,7 @@ async function Loaded({ user, report, t, lang, tab }: { user: SessionUser; repor
     return {
       id: r.id,
       name: testDisplayName(r.canonicalKey, r.testName, lang),
+      source: r.sourceLine,
       valueText: r.valueText,
       valueNum: r.valueNum,
       unit: r.unit,

@@ -8,10 +8,13 @@ const lanOrigins = Object.values(os.networkInterfaces())
   .map((a) => a!.address);
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: process.cwd(),
   allowedDevOrigins: lanOrigins,
   // Native / heavy Node packages must not be bundled by Turbopack.
   serverExternalPackages: ["better-sqlite3", "pdfjs-dist", "tesseract.js"],
   turbopack: {
+    // Watch only this app (a parent folder can contain unrelated, frequently written files).
+    root: process.cwd(),
     rules: {
       "*.css": {
         loaders: ["@tailwindcss/turbopack"],

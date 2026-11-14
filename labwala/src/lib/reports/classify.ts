@@ -12,6 +12,7 @@
  *  unknown  – no usable range on the report and no lab flag
  */
 import type { ResultStatus } from "./types";
+import { convert } from "./units";
 
 type Input = {
   canonicalKey: string | null;
@@ -24,9 +25,9 @@ type Input = {
 };
 
 /**
- * Clinician-approved critical thresholds. Intentionally EMPTY until a clinician reviews
- * the values and a source is recorded. Shape:
- *   { key: "potassium", unit: "mmol/L", below: x, above: y, source: "…", approvedBy: "…" }
+ * Urgent thresholds with a recorded source. A value that hits OR passes a threshold is urgent
+ * ("hit or pass" per the source). Values in other units are converted exactly before comparing;
+ * if the unit cannot be converted, the threshold is not applied (no guessing).
  */
 export const CRITICAL_THRESHOLDS: {
   key: string;
@@ -35,7 +36,12 @@ export const CRITICAL_THRESHOLDS: {
   above?: number;
   source: string;
   approvedBy: string;
-}[] = [];
+}[] = [
+  { key: "hemoglobin", unit: "g/dL", below: 7.0, source: "CityLab dangerous/urgent values directive", approvedBy: "CityLab Diagnostics (hackathon corpus)" },
+  { key: "glucose_fasting", unit: "mg/dL", above: 300, source: "CityLab dangerous/urgent values directive", approvedBy: "CityLab Diagnostics (hackathon corpus)" },
+  { key: "platelets", unit: "cells/mcL", below: 50000, source: "CityLab dangerous/urgent values directive", approvedBy: "CityLab Diagnostics (hackathon corpus)" },
+  { key: "alt", unit: "U/L", above: 1000, source: "CityLab dangerous/urgent values directive", approvedBy: "CityLab Diagnostics (hackathon corpus)" },
+];
 
 const CRITICAL_FLAG = /^(HH|LL|CRITICAL|CRIT|PANIC)$/i;
 const HIGH_FLAG = /^(H|HIGH|↑)$/i;
@@ -43,13 +49,15 @@ const LOW_FLAG = /^(L|LOW|↓)$/i;
 
 export function classify(r: Input): { status: ResultStatus; reason: string } {
   const flag = r.labFlag?.trim() ?? "";
-  if (CRITICAL_FLAG.test(flag)) return { status: "urgent", reason: "The lab marked this result as critical." };
+  if (CRITICAL_FLAG.test(flag)) return { status: "urgent", reason: "critical_flag" };
 
   if (r.valueNum !== null && r.unit) {
     for (const t of CRITICAL_THRESHOLDS) {
-      if (t.key !== r.canonicalKey || t.unit.toLowerCase() !== r.unit.toLowerCase()) continue;
-      if ((t.below !== undefined && r.valueNum < t.below) || (t.above !== undefined && r.valueNum > t.above))
-        return { status: "urgent", reason: `Crosses an urgent threshold (${t.source}).` };
+      if (t.key !== r.canonicalKey) continue;
+      const v = convert(t.key, r.valueNum, r.unit, t.unit);
+      if (v === null) continue;
+      if ((t.below !== undefined && v <= t.below) || (t.above !== undefined && v >= t.above))
+        return { status: "urgent", reason: "critical_threshold" };
     }
   }
 

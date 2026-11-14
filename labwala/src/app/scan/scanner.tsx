@@ -170,6 +170,9 @@ export function Scanner({ t, closeLabel, maxMb }: { t: Dict["scan"]; closeLabel:
   function onImport(files: File[]) {
     const pdf = files.find((f) => f.type === "application/pdf");
     if (pdf) return uploadFile(pdf, null);
+    // Text reports exported by lab systems (.md / .txt)
+    const txt = files.find((f) => /\.(md|markdown|txt)$/i.test(f.name) || f.type === "text/markdown" || f.type === "text/plain");
+    if (txt) return uploadFile(txt, null);
     const img = files.find((f) => f.type === "image/jpeg" || f.type === "image/png");
     if (!img) return setPhase({ kind: "error", message: t.invalidType });
     ingest(img);
@@ -259,7 +262,7 @@ export function Scanner({ t, closeLabel, maxMb }: { t: Dict["scan"]; closeLabel:
       </footer>
 
       <input ref={camera} type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) ingest(f); e.target.value = ""; }} />
-      <input ref={importer} type="file" accept="application/pdf,image/png,image/jpeg" className="sr-only" onChange={(e) => { onImport([...(e.target.files ?? [])]); e.target.value = ""; }} />
+      <input ref={importer} type="file" accept="application/pdf,image/png,image/jpeg,.md,.markdown,.txt,text/markdown,text/plain" className="sr-only" onChange={(e) => { onImport([...(e.target.files ?? [])]); e.target.value = ""; }} />
 
       {editing && <CropEditor src={editing.sourceUrl} detected={editing.detected} initial={editing.corners} t={t} onCancel={() => setEditing(null)} onConfirm={confirmCrop} />}
 

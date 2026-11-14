@@ -31,11 +31,13 @@ export function ConfirmEditor({
   reportId: string;
   t: ConfirmT;
   common: Dict["common"];
-  initial: { labName: string; reportDate: string; dateLabel: string; rows: EditRow[] };
+  initial: { labName: string; reportDate: string; dateLabel: string; rows: EditRow[]; patientAge: number | null; patientSex: "male" | "female" | null };
 }) {
   const [labName, setLabName] = useState(initial.labName);
   const [reportDate, setReportDate] = useState(initial.reportDate);
   const [rows, setRows] = useState<EditRow[]>(initial.rows);
+  const [age, setAge] = useState<string>(initial.patientAge === null ? "" : String(initial.patientAge));
+  const [sex, setSex] = useState<"male" | "female" | null>(initial.patientSex);
   const [editing, setEditing] = useState<EditRow | null>(null);
   const [meta, setMeta] = useState(false);
   const [pending, start] = useTransition();
@@ -57,6 +59,8 @@ export function ConfirmEditor({
       const res = await confirmReportAction(reportId, {
         labName: labName.trim() || null,
         reportDate: reportDate || null,
+        patientAge: age.trim() && Number.isFinite(Number(age)) ? Math.max(0, Math.min(120, Math.round(Number(age)))) : null,
+        patientSex: sex,
         rows: rows.map((r) => ({
           id: r.id,
           testName: r.testName.trim(),
@@ -97,6 +101,39 @@ export function ConfirmEditor({
         </span>
         <ChevronRight className="size-5 text-ink-3/70 rtl:-scale-x-100" aria-hidden />
       </button>
+
+      {/* Patient age/sex as printed. Missing → ask; never guessed from name or profile. */}
+      <section className="mb-7">
+        <h2 className="mb-2 px-1 text-[14px] font-semibold text-ink-2">{t.demoTitle}</h2>
+        <div className="rounded-[18px] bg-surface p-4 shadow-[var(--shadow)]">
+          {(initial.patientAge === null || initial.patientSex === null) && (
+            <p className="mb-4 rounded-[12px] bg-outside-soft p-3 text-[14px] leading-relaxed text-ink">{t.demoMissing}</p>
+          )}
+          <div className="grid grid-cols-[1fr_1.4fr] gap-3">
+            <label className="flex flex-col gap-1.5 text-[14px] font-medium text-ink">
+              {t.age}
+              <Input type="number" inputMode="numeric" min={0} max={120} dir="ltr" value={age} onChange={(e) => setAge(e.target.value)} placeholder="—" />
+            </label>
+            <div className="flex flex-col gap-1.5 text-[14px] font-medium text-ink">
+              {t.sex}
+              <div role="radiogroup" aria-label={t.sex} className="grid h-[52px] grid-cols-2 rounded-[14px] bg-surface-2 p-1">
+                {(["female", "male"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    role="radio"
+                    aria-checked={sex === v}
+                    onClick={() => setSex(sex === v ? null : v)}
+                    className={cx("rounded-[11px] text-[15px] transition-all", sex === v ? "bg-surface font-semibold text-ink shadow-[var(--shadow)]" : "text-ink-2")}
+                  >
+                    {t.sexOptions[v]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {rows.length === 0 && <p className="mb-6 rounded-[16px] bg-outside-soft p-4 text-[15px] leading-relaxed text-ink">{t.nothingFound}</p>}
 

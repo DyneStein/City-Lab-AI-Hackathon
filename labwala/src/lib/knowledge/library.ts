@@ -472,6 +472,36 @@ export const LIBRARY: LibraryEntry[] = [
     reviewedBy: "General physician",
     sources: [MLP("Erythrocyte Sedimentation Rate (ESR)", "erythrocyte-sedimentation-rate-esr")],
   },
+  {
+    key: "urine_ph",
+    displayName: "Urine pH",
+    aliases: ["urine ph", "ph (urine)", "urine reaction", "urine ph value", "ph level", "ph"],
+    loinc: "5803-2",
+    panel: "other",
+    measures: "Urine pH shows how acidic or alkaline your urine is.",
+    whenHigh: "Your urine is more alkaline than this lab usually expects.",
+    whenLow: "Your urine is more acidic than this lab usually expects.",
+    reasonsHigh: ["Diet rich in vegetables and fruit", "Some urinary infections", "Some medicines"],
+    reasonsLow: ["Diet rich in meat", "Dehydration", "Some medical conditions"],
+    context: "Urine pH changes during the day and with food, so one value is read together with the rest of the urine test.",
+    reviewedBy: "General physician",
+    sources: [MLP("Urinalysis", "urinalysis")],
+  },
+  {
+    key: "urine_protein",
+    displayName: "Urine protein",
+    aliases: ["urine protein", "protein (urine)", "urine albumin", "proteinuria", "protein urine", "protein"],
+    loinc: "2888-6",
+    panel: "other",
+    measures: "This checks whether protein is passing into your urine. Healthy kidneys keep most protein in the blood.",
+    whenHigh: "Protein was found in your urine, which this lab does not expect.",
+    whenLow: "No protein was found, which is what this lab expects.",
+    reasonsHigh: ["Hard exercise or fever (often temporary)", "Dehydration", "Kidney conditions", "High blood pressure or diabetes affecting the kidneys"],
+    reasonsLow: [],
+    context: "A positive result is often re-checked, because temporary causes are common.",
+    reviewedBy: "General physician or nephrologist",
+    sources: [MLP("Protein in Urine", "protein-in-urine")],
+  },
 ];
 
 /* ── Lookup ── */
@@ -483,6 +513,7 @@ const norm = (s: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const EXACT_ONLY = new Set(["ph", "protein", "ph level"]);
 const aliasIndex = new Map<string, LibraryEntry>();
 for (const e of LIBRARY) for (const a of e.aliases) aliasIndex.set(norm(a), e);
 
@@ -492,11 +523,12 @@ export function matchTest(printedName: string): LibraryEntry | null {
   if (aliasIndex.has(n)) return aliasIndex.get(n)!;
   const stripped = n.replace(/^(serum|s\.|plasma|blood)\s+/, "").replace(/\s*\(.*?\)\s*$/, "").trim();
   if (aliasIndex.has(stripped)) return aliasIndex.get(stripped)!;
-  // longest alias contained as a whole word
+  // longest alias contained as a whole word (generic one-word aliases only match exactly,
+  // so "Total Protein" in blood is never mistaken for urine protein)
   let best: LibraryEntry | null = null;
   let bestLen = 0;
   for (const [alias, e] of aliasIndex) {
-    if (alias.length < 3 || alias.length <= bestLen) continue;
+    if (alias.length < 3 || alias.length <= bestLen || EXACT_ONLY.has(alias)) continue;
     const re = new RegExp(`(^|[^a-z0-9])${alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`);
     if (re.test(n)) {
       best = e;

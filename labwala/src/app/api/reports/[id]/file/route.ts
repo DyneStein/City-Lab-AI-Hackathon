@@ -11,7 +11,7 @@ export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: str
   const data = getBlob(report.storageKey);
   return new Response(new Uint8Array(data), {
     headers: {
-      "content-type": report.mimeType,
+      "content-type": report.mimeType.startsWith("text/") ? `${report.mimeType}; charset=utf-8` : report.mimeType,
       "content-disposition": `inline; filename="report${report.mimeType === "application/pdf" ? ".pdf" : ""}"`,
       "cache-control": "private, no-store",
       "x-content-type-options": "nosniff",

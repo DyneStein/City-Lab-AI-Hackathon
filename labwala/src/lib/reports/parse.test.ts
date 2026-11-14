@@ -53,6 +53,7 @@ describe("classify", () => {
   it("lab flag without range counts as outside", () => expect(classify({ ...base, valueNum: 11.5, refLow: null, refHigh: null, labFlag: "H" }).status).toBe("outside"));
   it("far outside needs review", () => expect(classify({ ...base, valueNum: 8, refLow: 12, refHigh: 16 }).status).toBe("review"));
   it("lab critical flag is urgent", () => expect(classify({ ...base, valueNum: 6, refLow: 12, refHigh: 16, labFlag: "LL" }).status).toBe("urgent"));
-  it("never urgent from range alone (no approved thresholds)", () =>
-    expect(classify({ ...base, valueNum: 3, refLow: 12, refHigh: 16 }).status).toBe("review"));
+  it("never urgent from range alone when a test has no sourced threshold", () =>
+    expect(classify({ ...base, canonicalKey: "ferritin", unit: "ng/mL", valueNum: 1, refLow: 13, refHigh: 150 }).status).toBe("review"));
+  it("urgent at the sourced hemoglobin threshold", () => expect(classify({ ...base, valueNum: 3, refLow: 12, refHigh: 16 }).status).toBe("urgent"));
 });

@@ -83,7 +83,9 @@ export const reports = sqliteTable(
     labName: text("lab_name"),
     labId: text("lab_id"),
     reportDate: text("report_date"), // ISO date as printed / confirmed
-    extractionMethod: text("extraction_method", { enum: ["pdf_text", "ocr", "manual"] }),
+    patientAge: integer("patient_age"), // as printed on the report (or entered by the user); never guessed
+    patientSex: text("patient_sex", { enum: ["female", "male"] }),
+    extractionMethod: text("extraction_method", { enum: ["pdf_text", "ocr", "manual", "text"] }),
     ocrConfidence: real("ocr_confidence"),
     pageCount: integer("page_count"),
     layoutEnc: text("layout_enc"), // encrypted JSON: positioned text lines per page

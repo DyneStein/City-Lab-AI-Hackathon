@@ -46,6 +46,8 @@ export default async function ConfirmPage({ params }: { params: Promise<{ id: st
         labName: report.labName ?? "",
         reportDate: report.reportDate ?? "",
         dateLabel: report.reportDate ? formatDate(report.reportDate, lang, "long") : "",
+        patientAge: report.patientAge ?? null,
+        patientSex: report.patientSex ?? null,
         rows: rows.map((r) => ({
           key: r.id,
           id: r.id,

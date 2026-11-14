@@ -30,7 +30,8 @@ const LANGUAGE_RULES: Record<Lang, string> = {
 const SAFETY_RULES = `You explain laboratory reports for patient education. Strict rules:
 - Never diagnose. Never state or imply that the person has a specific disease. Use "can be related to", "one possible reason".
 - Never invent or change any value, unit, or reference range. Do not repeat numbers; the app shows the numbers itself.
-- Judge high/low ONLY from the "status" field provided, which was computed from the lab's own printed range.
+- Judge high/low ONLY from the "status" field provided, which was computed from the lab's own range. If status is "unknown", say it cannot be classified from the lab's ranges (for example because age or sex is missing); never estimate it.
+- If status is "urgent", say clearly and calmly that the person should see a doctor today.
 - A value inside the range does not guarantee good health; a value outside the range does not automatically mean disease. Say so where relevant.
 - Never recommend starting, stopping or changing medicines, supplements, vitamins, diet plans or doses, and never say a result "requires" treatment or supplementation. Only suggest discussing it with a doctor.
 - Never name a disease as the explanation for a result; describe what the test measures and list possible reasons neutrally.
@@ -59,6 +60,14 @@ function ageBand(p: { ageYears: number | null; dateOfBirth: string | null } | nu
   if (age < 18) return "under 18";
   const lo = Math.floor(age / 10) * 10;
   return `${lo}-${lo + 9}`;
+}
+
+/** Who the report is about: age band and sex AS PRINTED ON THE REPORT (or entered on the check screen). */
+function personOf(report: Report) {
+  return {
+    ageBand: report.patientAge === null || report.patientAge === undefined ? "not stated on report" : ageBand({ ageYears: report.patientAge, dateOfBirth: null }),
+    sex: report.patientSex ?? "not stated on report",
+  };
 }
 
 /* ───────────── Safety post-processing (code, not AI) ───────────── */
@@ -215,7 +224,7 @@ export async function getFullExplanation(
       const payload = await pseudonymize(
         user.id,
         scope,
-        JSON.stringify({ person: { ageBand: ageBand(user.profile), sex: user.profile?.sex ?? "undisclosed" }, tests: chunk }),
+        JSON.stringify({ person: personOf(report), tests: chunk }),
       );
       const out = await chatJson(
         `${SAFETY_RULES}\n\n${LANGUAGE_RULES[lang]}`,
@@ -301,7 +310,7 @@ export async function getSummary(
     const payload = await pseudonymize(
       user.id,
       scope,
-      JSON.stringify({ person: { ageBand: ageBand(user.profile), sex: user.profile?.sex ?? "undisclosed" }, counts, tests: tests.map(({ sourceIds: _s, ...t }) => t) }),
+      JSON.stringify({ person: personOf(report), counts, tests: tests.map(({ sourceIds: _s, ...t }) => t) }),
     );
     const out = await chatJson(
       `${SAFETY_RULES}\n\n${LANGUAGE_RULES[lang]}`,
@@ -342,7 +351,7 @@ export async function answerQuestion(
   const payload = await pseudonymize(user.id, scope, JSON.stringify(tests.map(({ sourceIds: _s, ...t }) => t)));
   const q = await pseudonymize(user.id, scope, question);
   const answer = await chatText(
-    `${SAFETY_RULES}\n\n${LANGUAGE_RULES[lang]} Answer in that language unless the user clearly asks for another language.\nKeep answers under 150 words. If the question is outside this report or needs a diagnosis, say so kindly and suggest asking a doctor.\n\nSOURCES:\n${sourceBlock(sources)}\n\nREPORT TESTS:\n${payload}`,
+    `${SAFETY_RULES}\n\n${LANGUAGE_RULES[lang]} Answer in that language unless the user clearly asks for another language.\nKeep answers under 150 words. Only discuss THIS report: if asked about any other person, patient or report, politely refuse. If the question needs a diagnosis, say so kindly and suggest asking a doctor. If a status is "unknown" because age or sex is missing, say the range cannot be chosen without it; never guess it.\n\nSOURCES:\n${sourceBlock(sources)}\n\nREPORT TESTS:\n${payload}`,
     [...history.slice(-6), { role: "user", content: q }],
     900,
   );

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { loadPdfjs } from "@/lib/pdf-client";
+import { cleanLine } from "@/lib/reports/parse";
 import { cx, statusDot } from "@/components/ui";
 import type { ViewResult } from "./types";
 
@@ -33,7 +34,9 @@ export function OriginalViewer({
   const url = `/api/reports/${reportId}/file`;
   return (
     <div dir="ltr" className="flex flex-col gap-4">
-      {mimeType === "application/pdf" ? (
+      {mimeType.startsWith("text/") ? (
+        <TextReport url={url} results={results} selected={selected} onSelect={onSelect} labels={labels} />
+      ) : mimeType === "application/pdf" ? (
         <PdfPages url={url} pages={pages} results={results} selected={selected} onSelect={onSelect} labels={labels} />
       ) : (
         <ImagePage url={url} dim={pages[0]} results={results} selected={selected} onSelect={onSelect} labels={labels} />
@@ -161,6 +164,47 @@ function ImagePage({ url, dim, results, selected, onSelect, labels }: { url: str
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={url} alt={labels.page.replace("{n}", "1")} className="block w-full" />
       {scale > 0 && <Markers results={results} page={1} scale={scale} pageWidth={dim.width} selected={selected} onSelect={onSelect} label={labels.explain} />}
+    </div>
+  );
+}
+
+/** Text/Markdown reports: the real document, with result lines tappable and long boilerplate folded. */
+function TextReport({ url, results, selected, onSelect, labels }: { url: string } & Common) {
+  const [lines, setLines] = useState<string[] | null>(null);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(url)
+      .then((r) => (r.ok ? r.text() : Promise.reject()))
+      .then((t) => !cancelled && setLines(t.split(/\r?\n/).filter((l) => l.trim())))
+      .catch(() => !cancelled && setError(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+  if (error) return <p className="text-[15px] text-urgent">{labels.loadError}</p>;
+  if (!lines) return <div className="skeleton h-96 w-full rounded-[12px]" />;
+  const bySource = new Map(results.filter((r) => r.source).map((r) => [r.source!, r]));
+  return (
+    <div className="rounded-[10px] bg-white p-4 font-mono text-[12.5px] leading-relaxed text-[#1f2937] shadow-[0_1px_3px_rgb(0_0_0/0.08)]">
+      {lines.map((raw, i) => {
+        const r = bySource.get(cleanLine(raw));
+        if (r)
+          return (
+            <button
+              key={i}
+              onClick={() => onSelect(r.id)}
+              aria-label={`${labels.explain}: ${r.name}`}
+              className={cx("my-1 flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-start", selected === r.id ? "bg-accent/15 ring-2 ring-accent/60" : "bg-accent/5 hover:bg-accent/10")}
+            >
+              <span className={cx("size-3 shrink-0 rounded-full", statusDot[r.status])} aria-hidden />
+              <span className="min-w-0 flex-1 break-words">{raw}</span>
+            </button>
+          );
+        // Long boilerplate paragraphs are folded so the results are easy to find
+        if (raw.length > 220) return <p key={i} className="my-1 truncate text-[#9ca3af]">{raw}</p>;
+        return <p key={i} className="my-0.5 break-words">{raw}</p>;
+      })}
     </div>
   );
 }

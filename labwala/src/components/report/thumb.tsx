@@ -27,6 +27,10 @@ export function ReportThumb({ reportId, mimeType, className }: { reportId: strin
           if (!r.ok) throw new Error();
           return r.blob();
         });
+        if (mimeType.startsWith("text/")) {
+          if (!cancelled) setFailed(true); // text reports: show the document icon
+          return;
+        }
         if (mimeType !== "application/pdf") {
           url = URL.createObjectURL(blob);
           if (!cancelled) setSrc(url);

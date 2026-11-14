@@ -18,7 +18,7 @@ export type PageLayout = {
 };
 
 export type ReportLayout = {
-  method: "pdf_text" | "ocr";
+  method: "pdf_text" | "ocr" | "text";
   pages: PageLayout[];
 };
 
@@ -44,5 +44,7 @@ export type ParsedResult = {
 export type ParsedReport = {
   labName: string | null;
   reportDate: string | null;
+  patientAge: number | null;
+  patientSex: "male" | "female" | null;
   results: ParsedResult[];
 };

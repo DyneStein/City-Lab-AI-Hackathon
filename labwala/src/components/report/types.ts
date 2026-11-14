@@ -1,12 +1,13 @@
 import type { ResultStatus } from "@/lib/reports/types";
 import type { DiscussLevel } from "@/lib/ai/schemas";
 
-export type Direction = "below" | "above" | "flagged" | "critical" | "none" | "within";
+export type Direction = "below" | "above" | "flagged" | "critical" | "none" | "within" | "needsAge" | "needsSex" | "needsAgeSex" | "cannot" | "unitUnconvertible" | "threshold";
 
 /** Everything the report screen needs about one result, already in the user's language. */
 export type ViewResult = {
   id: string;
   name: string; // localized when known, otherwise as printed
+  source: string | null; // the report line this came from (for text reports)
   valueText: string;
   valueNum: number | null;
   unit: string | null;

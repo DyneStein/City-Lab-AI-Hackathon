@@ -8,7 +8,7 @@ import { HttpError } from "@/lib/auth/session";
 import { env } from "@/lib/env";
 import { extractPdfLayout, ocrImage, sniffMime } from "./extract";
 import { parseReport, parseRange } from "./parse";
-import { classify } from "./classify";
+import { DERIVED_REASONS, evaluateResult } from "./evaluate";
 import { matchTest } from "@/lib/knowledge/library";
 import type { PageLayout, ParsedReport, ReportLayout } from "./types";
 
@@ -43,7 +43,7 @@ export function getLayout(report: Report): ReportLayout | null {
 export async function createReportFromUpload(userId: string, file: Buffer, fileName: string, source: "upload" | "gmail" = "upload") {
   const maxBytes = env.MAX_UPLOAD_MB * 1024 * 1024;
   if (file.length === 0 || file.length > maxBytes) throw new HttpError(413, "too_large");
-  const mime = sniffMime(file);
+  const mime = sniffMime(file) ?? (looksLikeText(file, fileName) ? "text/markdown" : null);
   if (!mime) throw new HttpError(415, "invalid_type");
 
   const hash = sha256(file);
@@ -83,6 +83,8 @@ export async function createReportFromUpload(userId: string, file: Buffer, fileN
         return { reportId: id, duplicate: false, needsOcr: true, pageCount };
       }
       saveExtraction(userId, id, layout, null);
+    } else if (mime === "text/markdown") {
+      saveExtraction(userId, id, textLayout(file.toString("utf8")), null);
     } else {
       const { page, confidence } = await ocrImage(file, 1, 1);
       saveExtraction(userId, id, { method: "ocr", pages: [page] }, confidence);
@@ -92,6 +94,26 @@ export async function createReportFromUpload(userId: string, file: Buffer, fileN
     db.update(schema.reports).set({ status: "failed", errorCode: "extract_failed" }).where(eq(schema.reports.id, id)).run();
   }
   return { reportId: id, duplicate: false, needsOcr: false };
+}
+
+/** Plain-text / Markdown reports (e.g. lab systems that export .md or .txt). */
+function looksLikeText(buf: Buffer, fileName: string) {
+  const head = buf.subarray(0, 8192);
+  if (head.includes(0)) return false; // binary
+  if (/\.(md|markdown|txt)$/i.test(fileName)) return true;
+  const s = head.toString("utf8");
+  const printable = s.replace(/[^\x09\x0a\x0d\x20-\x7e\u00a0-\uffff]/g, "").length;
+  return s.length > 40 && printable / s.length > 0.97;
+}
+
+function textLayout(text: string): ReportLayout {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(0, 5000)
+    .map((l) => ({ text: l, items: [], box: [0, 0, 0, 0] as [number, number, number, number] }));
+  return { method: "text", pages: [{ page: 1, width: 0, height: 0, lines }] };
 }
 
 /** OCR for scanned PDFs: page images rendered by the browser at `scale`. */
@@ -121,6 +143,8 @@ function saveExtraction(userId: string, reportId: string, layout: ReportLayout, 
         status: "extracted",
         labName: parsed.labName,
         reportDate: parsed.reportDate,
+        patientAge: parsed.patientAge,
+        patientSex: parsed.patientSex,
         extractionMethod: layout.method,
         ocrConfidence,
         pageCount: layout.pages.length,
@@ -135,8 +159,9 @@ function saveExtraction(userId: string, reportId: string, layout: ReportLayout, 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 function insertResults(tx: Tx, userId: string, reportId: string, parsed: ParsedReport, now: number) {
+  const ctx = { labName: parsed.labName, age: parsed.patientAge, sex: parsed.patientSex };
   parsed.results.forEach((r, i) => {
-    const c = classify(r);
+    const c = evaluateResult(r, ctx);
     tx.insert(schema.testResults)
       .values({
         id: newId(),
@@ -148,12 +173,12 @@ function insertResults(tx: Tx, userId: string, reportId: string, parsed: ParsedR
         valueText: r.valueText,
         valueNum: r.valueNum,
         unit: r.unit,
-        refText: r.refText,
-        refLow: r.refLow,
-        refHigh: r.refHigh,
+        refText: c.refText,
+        refLow: c.refLow,
+        refHigh: c.refHigh,
         labFlag: r.labFlag,
         status: c.status,
-        statusReason: c.reason,
+        statusReason: c.statusReason,
         needsReview: r.needsReview,
         reviewReason: r.reviewReason,
         page: r.page,
@@ -173,6 +198,8 @@ export const confirmSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .nullable(),
+  patientAge: z.number().int().min(0).max(120).nullable().default(null),
+  patientSex: z.enum(["male", "female"]).nullable().default(null),
   rows: z
     .array(
       z.object({
@@ -200,7 +227,10 @@ export function confirmReport(userId: string, reportId: string, input: z.infer<t
     input.rows.forEach((row, position) => {
       const vm = row.valueText.match(/^([<>]=?)?\s*(\d+(?:[.,]\d+)?)$/);
       const valueNum = vm && !vm[1] ? Number(vm[2].replace(",", ".")) : null;
-      const range = row.refText ? parseRange(row.refText) : null;
+      const prevRow = row.id ? existing.get(row.id) : undefined;
+      // A range the app derived (lab range sheet) is re-derived, not re-parsed; a typed range is "printed".
+      const derived = !!prevRow && (prevRow.refText ?? "") === (row.refText ?? "") && DERIVED_REASONS.has(prevRow.statusReason ?? "");
+      const range = row.refText && !derived ? parseRange(row.refText) : null;
       const canonical = matchTest(row.testName);
       const fields = {
         testName: row.testName,
@@ -208,27 +238,27 @@ export function confirmReport(userId: string, reportId: string, input: z.infer<t
         valueText: row.valueText,
         valueNum,
         unit: row.unit || null,
-        refText: row.refText || null,
+        refText: derived ? null : row.refText || null,
         refLow: range?.low ?? null,
         refHigh: range?.high ?? null,
         labFlag: row.labFlag || null,
       };
-      const c = classify(fields);
-      const prev = row.id ? existing.get(row.id) : undefined;
-      if (prev) {
+      const c = evaluateResult(fields, { labName: input.labName, age: input.patientAge, sex: input.patientSex });
+      const stored = { ...fields, refText: c.refText, refLow: c.refLow, refHigh: c.refHigh, status: c.status, statusReason: c.statusReason };
+      if (prevRow) {
         tx.update(schema.testResults)
-          .set({ ...fields, position, status: c.status, statusReason: c.reason, needsReview: false, reviewReason: null, userVerified: true })
-          .where(eq(schema.testResults.id, prev.id))
+          .set({ ...stored, position, needsReview: false, reviewReason: null, userVerified: true })
+          .where(eq(schema.testResults.id, prevRow.id))
           .run();
       } else {
         tx.insert(schema.testResults)
-          .values({ id: newId(), reportId, userId, position, ...fields, status: c.status, statusReason: c.reason, userVerified: true, createdAt: now })
+          .values({ id: newId(), reportId, userId, position, ...stored, userVerified: true, createdAt: now })
           .run();
       }
     });
 
     tx.update(schema.reports)
-      .set({ status: "confirmed", confirmedAt: now, labName: input.labName, reportDate: input.reportDate })
+      .set({ status: "confirmed", confirmedAt: now, labName: input.labName, reportDate: input.reportDate, patientAge: input.patientAge, patientSex: input.patientSex })
       .where(eq(schema.reports.id, report.id))
       .run();
     // Results changed: any cached explanation is stale
