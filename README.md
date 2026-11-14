@@ -1,4 +1,34 @@
-# LabWala — AI lab report explainer
+# LabWala — understand your lab report in English, Urdu and Punjabi
+
+## ▶ Run it (one command)
+
+Needs only **Docker Desktop** (https://www.docker.com/products/docker-desktop/).
+
+```bash
+git clone https://github.com/DyneStein/City-Lab-AI-Hackathon.git
+cd City-Lab-AI-Hackathon
+docker compose up --build
+```
+
+Open **http://localhost:3100** → "Continue on this computer" → **Create account** → tap **Scan** → **Sample report**.
+First build takes a few minutes. Stop with `Ctrl+C`.
+
+### Optional: switch on AI explanations and Gmail (free keys)
+
+Without keys the app still works fully, using its cited medical reference library.
+To turn on GPT-OSS-120B explanations and Gmail import:
+
+1. `cp labwala/.env.example labwala/.env`
+2. Open `labwala/.env` and paste:
+   - `AI_API_KEY=` a free Groq key from https://console.groq.com/keys
+   - `GOOGLE_CLIENT_ID=` / `GOOGLE_CLIENT_SECRET=` (optional, Gmail) — steps are inside the file
+3. `docker compose up --build` again.
+
+To use it on a phone on the same Wi-Fi, add `PUBLIC_URL=http://<your-laptop-ip>:3100` to `labwala/.env`
+so the laptop's QR code points to the right address.
+
+---
+
 
 Explains laboratory reports in plain English, Pakistani Urdu and Punjabi (Shahmukhi). It educates; it never diagnoses.
 Everything runs on free tools.

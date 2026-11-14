@@ -1,0 +1,27 @@
+# LabWala: one command runs everything.
+#   docker compose up --build        then open http://localhost:3100
+services:
+  privacy:
+    build: ./privacy-service
+    restart: unless-stopped
+
+  app:
+    build: ./labwala
+    ports:
+      - "3100:3100"
+    environment:
+      PRESIDIO_URL: http://privacy:8790
+      APP_URL: http://localhost:3100
+    # Keys (Groq, Google OAuth) and optional PUBLIC_URL for the phone QR code
+    env_file:
+      - path: ./labwala/.env
+        required: false
+    volumes:
+      - labwala-data:/app/data
+    depends_on:
+      privacy:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  labwala-data:

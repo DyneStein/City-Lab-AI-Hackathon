@@ -26,7 +26,7 @@ export async function createSession(userId: string) {
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: env.NODE_ENV === "production",
+    secure: env.APP_URL.startsWith("https:"), // secure cookies need HTTPS; plain http://localhost must still work
     path: "/",
     maxAge: TTL_MS / 1000,
   });

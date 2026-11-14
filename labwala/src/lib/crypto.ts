@@ -16,7 +16,7 @@ function loadKey(): Buffer {
     if (k.length !== 32) throw new Error("DATA_ENCRYPTION_KEY must be 32 bytes, base64-encoded");
     return k;
   }
-  if (env.NODE_ENV === "production") throw new Error("DATA_ENCRYPTION_KEY is required in production");
+  if (env.NODE_ENV === "production") console.warn("[crypto] DATA_ENCRYPTION_KEY not set: using a generated key stored in DATA_DIR/.dev-key");
   const dir = path.resolve(env.DATA_DIR);
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   const file = path.join(dir, ".dev-key");
