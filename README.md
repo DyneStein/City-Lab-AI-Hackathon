@@ -1,8 +1,38 @@
-# LabWala — understand your lab report in English, Urdu and Punjabi
+<div align="center">
 
-## ▶ Run it (one command)
+# 🧪 LabWala · لیب والا
 
-Needs only **Docker Desktop** (https://www.docker.com/products/docker-desktop/).
+**Understand your lab report in your own language — English, Urdu and Punjabi, in text and voice.**
+
+Scan a report with your phone. LabWala reads it, lets you check every value, and explains each result in simple words,
+using the reference ranges printed by *your* lab. It explains; it never diagnoses.
+
+![Next.js](https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs) ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white) ![Python](https://img.shields.io/badge/Python-3.12-3776ab?logo=python&logoColor=white) ![GPT--OSS--120B](https://img.shields.io/badge/LLM-GPT--OSS--120B%20(Groq%20free)-f55036) ![Presidio](https://img.shields.io/badge/Privacy-Microsoft%20Presidio-0078d4) ![OpenCV](https://img.shields.io/badge/Scanner-OpenCV-5c3ee8?logo=opencv) ![Docker](https://img.shields.io/badge/Run-docker%20compose-2496ed?logo=docker&logoColor=white) ![Cost](https://img.shields.io/badge/Cost-100%25%20free-2f6f4f)
+
+</div>
+
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/home.png" width="220"/><br/><sub><b>Report library</b></sub></td>
+<td align="center"><img src="docs/screenshots/summary.png" width="220"/><br/><sub><b>Summary, grouped by importance</b></sub></td>
+<td align="center"><img src="docs/screenshots/explain.png" width="220"/><br/><sub><b>Tap a result → explanation + voice</b></sub></td>
+<td align="center"><img src="docs/screenshots/urdu.png" width="220"/><br/><sub><b>اردو · Punjabi · English</b></sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/original.png" width="220"/><br/><sub><b>Explain directly on the original report</b></sub></td>
+<td align="center"><img src="docs/screenshots/scan.png" width="220"/><br/><sub><b>Scanner with edge detection</b></sub></td>
+<td align="center"><img src="docs/screenshots/family.png" width="220"/><br/><sub><b>Family view (sample data)</b></sub></td>
+<td align="center"><img src="docs/screenshots/history.png" width="220"/><br/><sub><b>Results over time</b></sub></td>
+</tr>
+</table>
+
+<p align="center"><img src="docs/screenshots/handoff.png" width="760"/><br/><sub><b>On a laptop, LabWala offers a QR code to continue on your phone (one-time sign-in link)</b></sub></p>
+
+---
+
+## ▶ Run it — one command
+
+Needs only **[Docker Desktop](https://www.docker.com/products/docker-desktop/)**.
 
 ```bash
 git clone https://github.com/DyneStein/City-Lab-AI-Hackathon.git
@@ -10,155 +40,82 @@ cd City-Lab-AI-Hackathon
 docker compose up --build
 ```
 
-Open **http://localhost:3100** → "Continue on this computer" → **Create account** → tap **Scan** → **Sample report**.
-First build takes a few minutes. Stop with `Ctrl+C`.
+Open **http://localhost:3100** → **Continue on this computer** → **Create account** → tap **Scan** → **Sample report**.
+The first build takes a few minutes. Stop with `Ctrl+C`.
 
-### Optional: switch on AI explanations and Gmail (free keys)
+**Works without any keys** — explanations then come from the built-in, cited medical library (in all three languages).
 
-Without keys the app still works fully, using its cited medical reference library.
-To turn on GPT-OSS-120B explanations and Gmail import:
+<details>
+<summary><b>Optional: switch on AI explanations and Gmail import (free keys)</b></summary>
 
 1. `cp labwala/.env.example labwala/.env`
-2. Open `labwala/.env` and paste:
-   - `AI_API_KEY=` a free Groq key from https://console.groq.com/keys
-   - `GOOGLE_CLIENT_ID=` / `GOOGLE_CLIENT_SECRET=` (optional, Gmail) — steps are inside the file
-3. `docker compose up --build` again.
+2. In `labwala/.env` set:
+   - `AI_API_KEY=` → free Groq key from <https://console.groq.com/keys>
+   - `GOOGLE_CLIENT_ID=` / `GOOGLE_CLIENT_SECRET=` → Gmail (step-by-step inside the file; add your Gmail as a *test user*)
+3. `docker compose up --build`
 
-To use it on a phone on the same Wi-Fi, add `PUBLIC_URL=http://<your-laptop-ip>:3100` to `labwala/.env`
-so the laptop's QR code points to the right address.
+For phones on the same Wi-Fi, add `PUBLIC_URL=http://<laptop-ip>:3100` so the laptop's QR code points to the laptop.
+</details>
 
 ---
 
+## ✨ What it does
 
-Explains laboratory reports in plain English, Pakistani Urdu and Punjabi (Shahmukhi). It educates; it never diagnoses.
-Everything runs on free tools.
-
-```
-Bahria-Hackathon/
-├── labwala/            Next.js app (UI, API, database, AI layer)
-└── privacy-service/   Python sidecar: Microsoft Presidio + Pakistani PII rules
-```
-
-## Run it
-
-```bash
-# 1. Privacy sidecar (Presidio). Needs uv; installs Python 3.12 automatically.
-cd privacy-service && uv sync --python 3.12
-uv run --python 3.12 uvicorn app:app --host 127.0.0.1 --port 8790
-
-# 2. App
-cd labwala
-npm install
-cp .env.example .env.local      # add AI_API_KEY (free Groq key) to enable AI explanations
-npm run dev                     # http://localhost:3100 (also on your Wi-Fi)
-```
-
-Use **"Use a sample report"** on the upload page to try it with the two synthetic reports
-(`labwala/public/samples/`, regenerate with `npm run samples`). Never test with someone else's real report.
-
-Checks: `npm test` (parser + safety rules), `npm run typecheck`, `npx next build`.
-
-## How a report flows
-
-```
-upload (PDF/JPG/PNG, magic-byte checked, 15 MB max)
-  → encrypted at rest (AES-256-GCM)
-  → digital PDF: pdf.js text with positions | photo: tesseract.js OCR | scanned PDF: pages rendered in the browser, then OCR
-  → deterministic parser: test, value, unit, lab-printed range, flag; unclear rows marked "please check"
-  → USER VERIFIES every row (nothing is explained before this)
-  → status computed in CODE from the lab's own range: within / outside / needs review / potentially urgent / no range
-  → RAG: curated MedlinePlus library + live MedlinePlus Connect (by LOINC, cached)
-  → minimized payload (test rows + age band only) → built-in PK rules + Presidio → [PERSON_1]-style placeholders
-  → GPT-OSS-120B (any OpenAI-compatible host) → JSON validated with Zod → safety post-checks → restore from encrypted vault
-  → full explanation / quick summary / interactive original report / voice
-```
-
-**Safety rules enforced in code, not left to the AI:**
-- Reference ranges only come from the report. The library contains no ranges.
-- The AI never decides high or low; it receives the computed status.
-- A result's "talk to a doctor" level can never be lower than its status requires.
-- Every result that needs review or is potentially urgent always appears in the summary, whatever the AI writes.
-- "Potentially urgent" fires only on the lab's own critical flags (HH, LL, Critical). The clinician-approved threshold table (`src/lib/reports/classify.ts`) is intentionally empty until a clinician signs it off with a source.
-- If the AI is off, fails, or returns output that fails validation, the app falls back to the cited library and says so.
-- If the privacy sidecar is down, AI calls are **blocked** (`PII_FALLBACK=block`).
-
-## Status
-
-| Area | Status |
+| | |
 |---|---|
-| Auth (email + bcrypt, httpOnly hashed-token sessions, rate limits) | **Working** |
-| Onboarding, language choice (EN / UR / PA), RTL layout, Nastaliq font | **Working** |
-| Dashboard, reports list, health history charts | **Working** |
-| Upload, PDF text extraction, image OCR, scanned-PDF OCR | **Working** (tested on synthetic reports) |
-| Verification / correction screen | **Working** |
-| Interactive original-report viewer (aligned markers, highlight, linked list) | **Working** |
-| Full explanation, quick summary, history comparison | **Working.** Library mode works now; the AI mode is built but **untested until an `AI_API_KEY` is added** |
-| Follow-up questions | Built; **needs `AI_API_KEY`** |
-| Presidio pseudonymization + encrypted vault + restore | **Working** (verified: name, phone, CNIC and MR number masked; test values kept) |
-| Voice playback (device voices: pause, resume, stop) | **Working** where the device has a voice; Punjabi falls back to an Urdu voice |
-| Data export and account deletion | **Working** |
-| Voice input (Whisper on Groq) | Phase 4 |
-| Gmail OAuth retrieval, lab directory | Phase 5. Needs `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (schema ready) |
-| Family groups, invitations, consent grants | Phase 6 (schema ready) |
-| Doctor / hospital directory | Phase 7 (schema ready; will contain only verified entries) |
-| One-time doctor share links | Phase 8 (schema ready: hashed token, expiry, atomic claim) |
-| Admin panel | Later phase (role exists) |
+| 📷 **Scan like a document scanner** | Live camera outline, auto-capture, draggable corners, perspective flattening and shadow removal (OpenCV on the laptop) · multi-page → one PDF · or import PDF/JPG/PNG |
+| ✅ **You check before anything is explained** | OCR/PDF text is parsed into test, value, unit, *lab-printed* range and flag. Unclear rows are flagged ("check the decimal point", "unit not found") |
+| 🧠 **Explanations in plain language** | Per test: what it measures, what your result means, possible reasons, context, "should I see a doctor?" · quick summary · questions to ask your doctor |
+| 🗣️ **Three languages, text and voice** | English, natural Pakistani Urdu, Punjabi (Shahmukhi) — everything on screen follows the language you pick. Natural Microsoft neural voices (Urdu: *Asad*) |
+| 📄 **Explain on the original report** | Tap a marked row on the actual PDF/photo to open its explanation |
+| 📈 **History** | The same test across reports, with each lab's own range |
+| 👨‍👩‍👧 **Family** | Family tree, per-person consent, shared trends (sample data; secure invitations are the next phase) |
+| ✉️ **Gmail import (read-only)** | Connect Gmail, list the sender addresses your lab uses, "Check now" — only those senders' attachments are read |
+| 📱 **Laptop → phone handoff** | QR code with a one-time sign-in link; the laptop does the heavy work (OCR, OpenCV, privacy filter, voice) |
 
-## Free stack
+## 🔒 Safety and privacy by design
 
-Next.js · SQLite + Drizzle · pdf.js · tesseract.js · Presidio + spaCy · GPT-OSS-120B on Groq's free tier
-(swap to Cerebras or OpenRouter through env vars) · MedlinePlus Connect · device speech synthesis · Recharts · lucide icons.
-
-## Known limitations
-
-- Urdu and Punjabi UI strings should be reviewed by native speakers; Punjabi (Shahmukhi) especially.
-- Presidio's name detection is English-only. Pattern rules (CNIC, phones, record numbers) work in any script, which is why data minimization runs first.
-- OCR misreads decimals on photos. That is what the verification screen and the "possible decimal misread" check are for.
-- Free-tier AI rate limits vary by provider. Explanations are generated in batches of 6 tests and cached per report and language.
-- The SQLite file itself is not encrypted. Uploaded files, layouts, explanations and the PII vault are encrypted per field. For production, use SQLCipher or an encrypted volume.
-
-## Mobile-first: laptop → phone
-
-LabWala is designed for phones. `npm run dev` listens on your Wi-Fi (port 3100). Opening it on a
-laptop first shows a **QR code**: scan it with the phone camera and the app opens on the phone,
-already signed in (one-time code, hashed in the database, expires in 5 minutes, claimed with an explicit tap).
-Choose **"Continue on this computer"** to stay on the laptop; the choice is remembered, and the
-phone button in the top bar brings the QR back.
-
-- Phone and laptop must be on the same Wi-Fi (the QR shows the laptop's address, e.g. `http://10.x.x.x:3100`).
-- Taking photos works over Wi-Fi: the Scan screen opens the phone's own camera.
-- A live in-browser camera viewfinder (needed for automatic page-edge detection) requires HTTPS.
-  Free option: `cloudflared tunnel --url http://localhost:3100`, then set `PUBLIC_URL` to the
-  `https://….trycloudflare.com` address so the QR uses it. Only do this with synthetic data:
-  the tunnel URL is reachable from the internet while it runs.
-
-## Design principles used
-
-- Mobile first: bottom tab bar with a raised Scan button and primary actions in the thumb zone; 48px touch targets.
-- Scanner-style capture: dark viewfinder, shutter, page strip, rotate/remove, "make text clearer", multi-page → one PDF.
-- Grouping and closure: results grouped by status in rounded containers; the within-range group is collapsed by default.
-- Progressive disclosure: summary first, then tap a result for its full explanation in a bottom sheet.
-- One language at a time: every string, test name, explanation, error and accessibility label exists in English, Urdu and Punjabi.
-
-## Running everything (3 terminals)
-
-```bash
-cd privacy-service && uv run --python 3.12 uvicorn app:app --host 127.0.0.1 --port 8790   # privacy, voice, scanner
-cd labwala && npm run dev      # app on http://localhost:3100 (and on your Wi-Fi)
-cd labwala && npm run phone    # HTTPS entrance for phones: live camera + edge detection
+```mermaid
+flowchart LR
+  A[Scan / PDF / Gmail] --> B[OCR + PDF text]
+  B --> C[Parser: test, value, unit, lab range]
+  C --> D{User checks every value}
+  D --> E[Status computed in code from the lab's own range]
+  E --> F[Minimise: test rows + age band only]
+  F --> G[Presidio + PK rules: CNIC, phone, MR no. to placeholders]
+  G --> H[GPT-OSS-120B + cited MedlinePlus library]
+  H --> I[Schema validation + safety post-checks]
+  I --> J[Text + voice in EN / UR / PA]
 ```
 
-- **Laptop does the heavy work for the phone:** page edge detection and flattening (OpenCV), OCR (tesseract),
-  privacy filtering (Presidio) and natural voices all run on the laptop; the phone only captures and displays.
-- **Phone camera:** with `npm run phone` the QR opens `https://<laptop-ip>:3443`. The phone warns once
-  ("not private") because the certificate is self-made on your laptop — continue, then allow the camera.
-  The live viewfinder outlines the page and auto-captures when steady; corners can be adjusted.
-  Without it, the Scan button opens the phone camera app instead and detection still runs on the photo.
-- **Voices:** Microsoft neural voices through `edge-tts` (Urdu: Asad; Punjabi: Asad reading Shahmukhi;
-  English: Prabhat). Free, but synthesis happens on Microsoft's online service, so the explanation text
-  (never your name or IDs, which are filtered out first) is sent there. Offline, the device's own voices are used.
-  The voice always follows the language picked in the top bar.
-- **Gmail (demo):** Profile → Gmail → connect (read-only) → add the sender address your test report will come
-  from (e.g. your second email) → send yourself a report PDF from that address → "Check now"
-  (the home screen also checks automatically every 10 minutes). Attachments that don't look like lab
-  reports are held for you to confirm instead of being imported. Setup steps are in `labwala/.env.example`.
+- **The AI never decides high/low.** Status (within / outside / needs review / potentially urgent) is computed in code from the range **printed on your lab report**. Reference ranges are never invented.
+- **The AI never sees who you are.** It receives only test names, values, units, ranges, an age band and sex (if given). Names, CNIC, phone and record numbers are removed by **Microsoft Presidio** plus custom Pakistani rules, replaced with placeholders, and stored in an **encrypted vault**. If the privacy service is down, nothing is sent (**fail-closed**).
+- **No diagnoses, no treatment advice.** Prompt rules + a code filter remove "take/stop supplements/medicine" advice; the "talk to a doctor" level can never be lower than the result's status; urgent/review results always appear in the summary.
+- **Every AI answer is schema-validated (Zod)**; invalid output falls back to the cited library.
+- **Encrypted at rest** (AES-256-GCM): uploaded files, report layouts, explanations, voice cache, vault, Gmail token. Read-only Gmail scope, revocable. Data export and account deletion.
+
+## 🧰 Tech stack (all free)
+
+| Layer | Technology |
+|---|---|
+| App | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS · mobile-first, RTL + Nastaliq |
+| Data | SQLite + Drizzle ORM · AES-256-GCM field/file encryption |
+| Reading reports | pdf.js (text + positions) · tesseract.js OCR · OpenCV edge detection & flattening |
+| AI | **GPT-OSS-120B** on Groq free tier (OpenAI-compatible, swappable via env) · Zod-validated JSON |
+| Knowledge (RAG) | Curated library from **MedlinePlus (U.S. National Library of Medicine)**, LOINC-mapped, + MedlinePlus Connect, with citations |
+| Privacy | **Microsoft Presidio** + spaCy + custom CNIC / +92 phone / MR-number recognisers · encrypted placeholder vault |
+| Voice | Microsoft neural voices via `edge-tts` (Asad for Urdu/Punjabi, Prabhat for English); device voices offline |
+| Integrations | Gmail API (OAuth, read-only) · QR handoff (one-time, hashed, 5-minute tokens) |
+| Run | `docker compose` (web app + Python sidecar) |
+
+## 📁 Repository
+
+```
+labwala/            Next.js app (UI, API, database, AI layer, parser, safety rules)
+privacy-service/    Python sidecar: Presidio PII detection · OpenCV scanner · edge-tts voices
+lab_reports/        Hackathon corpus (provided)
+PROBLEM_STATEMENT.md
+docker-compose.yml
+```
+
+<sub>For education only — LabWala does not diagnose. Sample reports and the sample family are synthetic.</sub>

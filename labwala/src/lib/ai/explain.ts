@@ -36,7 +36,8 @@ const SAFETY_RULES = `You explain laboratory reports for patient education. Stri
 - Never name a disease as the explanation for a result; describe what the test measures and list possible reasons neutrally.
 - Base medical facts on the provided SOURCES. If a test has no source, keep it general and say information is limited.
 - Mention missing information that would change interpretation (fasting, pregnancy, medicines, symptoms, earlier results) when relevant.
-- Calm, non-alarming tone. No emojis. No markdown.`;
+- Calm, non-alarming tone. No emojis. No markdown.
+- Write every field as 1-3 complete, warm sentences that speak directly to the person ("Your ..."), starting with a capital letter. Never write fragments or lowercase phrases. Example for "meaning": "Your vitamin D is below the range printed by your lab. This is common when people spend little time in the sun."`;
 
 type PromptTest = {
   id: string;
