@@ -57,6 +57,44 @@ The first build takes a few minutes. Stop with `Ctrl+C`.
 For phones on the same Wi-Fi, add `PUBLIC_URL=http://<laptop-ip>:3100` so the laptop's QR code points to the laptop.
 </details>
 
+## 📱 Full experience: laptop server + phone via QR (recommended for review)
+
+This is how LabWala is meant to be used and how we demo it: the **laptop runs the server and does the heavy work**
+(OCR, OpenCV page detection, privacy filter, AI calls, voices); the **phone scans the QR code** and becomes the scanner and reader.
+
+```bash
+# 1) Python service: privacy filter + scanner + voices   (needs uv: https://docs.astral.sh/uv/)
+cd privacy-service && uv sync --python 3.12 && uv run --python 3.12 uvicorn app:app --host 127.0.0.1 --port 8790
+
+# 2) the app (new terminal)
+cd labwala && npm install && npm run dev          # http://localhost:3100, also reachable on your Wi-Fi
+
+# 3) HTTPS entrance for phones (new terminal) — needed for the phone's live camera
+cd labwala && npm run phone                        # https://<laptop-ip>:3443
+```
+
+1. Open **http://localhost:3100** on the laptop → a **QR code** appears (sign in first to get a one-time sign-in link).
+2. Scan it with the phone (same Wi-Fi). The phone warns once "not private" because the certificate is generated on your
+   laptop → **Advanced → Proceed**. Allow the camera.
+3. On the phone: **Scan** → live page outline → adjust corners → **Read report** → check values → explanation, **Listen**,
+   switch **English / اردو / پنجابی** at the top.
+
+## 🐳 Docker notes (limitations of the container setup, not of the product)
+
+Docker is provided because the hackathon requires it, and it runs the full app on **http://localhost:3100**.
+A few things are limited **only inside Docker**, because a container cannot see your Wi-Fi network or create a trusted
+certificate for your phone:
+
+| In Docker | Why | How to get it |
+|---|---|---|
+| The laptop's QR code shows the container's internal address, so a phone can't open it | Containers don't know the laptop's Wi-Fi IP | Add `PUBLIC_URL=http://<laptop-ip>:3100` to `labwala/.env`, or use the native run above |
+| No **live** phone camera (the phone can still take a photo with its camera app; edge detection still runs) | Phone browsers allow live cameras only on HTTPS; the HTTPS entrance (`npm run phone`) is part of the native run | Use the native run above |
+| The first `docker compose up --build` can stop with *"Failed to collect page data"* | The build downloads web fonts; a network hiccup interrupts it | Run the same command again |
+| AI explanations / Gmail are off unless keys are added | Keys are never committed to a public repo | Add free keys in `labwala/.env` (see above) — without them the cited library explanations are used |
+
+Everything else (scanning by upload, OCR, verification, explanations, summary, original-report view, three languages,
+voices, history, family view, privacy filter) works the same in Docker.
+
 ---
 
 ## ✨ What it does
