@@ -39,7 +39,7 @@ export default async function ProfilePage() {
       </section>
 
       <Group title={t.me.care}>
-        <Row href="/family" icon={<Users className="size-5" />} title={t.me.family} trailing={t.common.comingSoon} />
+        <Row href="/family" icon={<Users className="size-5" />} title={t.me.family} />
         <Row href="/doctors" icon={<Stethoscope className="size-5" />} title={t.me.doctors} trailing={t.common.comingSoon} />
         <Row href="/shared" icon={<Share2 className="size-5" />} title={t.me.shared} trailing={t.common.comingSoon} />
       </Group>
