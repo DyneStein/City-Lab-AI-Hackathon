@@ -111,6 +111,21 @@ voices, history, family view, privacy filter) works the same in Docker.
 | ✉️ **Gmail import (read-only)** | Connect Gmail, list the sender addresses your lab uses, "Check now" — only those senders' attachments are read |
 | 📱 **Laptop → phone handoff** | QR code with a one-time sign-in link; the laptop does the heavy work (OCR, OpenCV, privacy filter, voice) |
 
+## ✅ Hackathon checkpoints (tested on `lab_reports/`)
+
+Upload any `lab_reports/report_*.md` file via **Scan → Import**. Every case below is covered by automated tests (`npm test`).
+
+| Checkpoint | How LabWala handles it |
+|---|---|
+| Results buried in long Markdown/legal boilerplate | Text/Markdown reports are parsed line by line; only result lines are kept (tables, `- **Test**: value`, `Test:`/`Result:` pairs, `pH -> 5.5`) |
+| Aliases (SGPT, SGOT, FBS, Hb, PLT, RBC, WBC) | Alias map → canonical test |
+| Different units (e.g. glucose in mmol/L) | Exact unit conversion before comparing with the lab's range sheet; unconvertible units are reported, never guessed |
+| Boundary values (exactly 200 mg/dL, 45 U/L) | Limits are inclusive → **within range** |
+| Missing age/sex (`[DATA CORRUPTED]`, `[NOT PROVIDED]`) | **Never guessed** (not from name, not from profile): the check screen asks; dependent tests stay unclassified until answered |
+| Tests not on the range sheets (e.g. Serum Ferritin) | "Cannot be classified from the lab's range sheets" |
+| Urgent thresholds (Hb < 7, FBS > 300, PLT < 50,000, ALT > 1000) | **Potentially urgent** + "see a doctor today" banner, unit-aware, hit-or-pass |
+| Privacy: never discuss other patients | Each report is isolated per user; the assistant refuses questions about anyone else; identifiers are stripped before AI |
+
 ## 🔒 Safety and privacy by design
 
 ```mermaid
