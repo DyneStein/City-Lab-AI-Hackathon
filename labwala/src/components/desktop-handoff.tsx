@@ -68,8 +68,11 @@ export function DesktopHandoff({ t, appName }: { t: Dict["handoff"]; appName: st
     if (!show) return;
     let cancelled = false;
     fetch("/api/handoff", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => !cancelled && setQr(d))
+      .then(async (r) => {
+        const d = await r.json();
+        // Only replace the code with a valid one; on errors (e.g. too many refreshes) keep the current code.
+        if (!cancelled && r.ok && typeof d?.url === "string" && typeof d?.svg === "string") setQr(d);
+      })
       .catch(() => {});
     // One-time codes expire after 5 minutes: refresh a little before that.
     const timer = setTimeout(() => setNonce((n) => n + 1), 4.5 * 60 * 1000);
@@ -126,7 +129,7 @@ export function DesktopHandoff({ t, appName }: { t: Dict["handoff"]; appName: st
             </div>
             {qr && (
               <p className="ltr-num max-w-[280px] truncate text-center text-[13px] text-ink-3" dir="ltr" title={qr.url}>
-                {qr.url.replace(/\/handoff\/.+$/, "")}
+                {(qr.url ?? "").replace(/\/handoff\/.+$/, "")}
               </p>
             )}
             <button onClick={() => setNonce((n) => n + 1)} className="flex h-10 items-center gap-2 rounded-full px-4 text-[14px] text-ink-2 hover:bg-surface-2">
