@@ -1,0 +1,17 @@
+[project]
+name = "nuskha-privacy"
+version = "0.1.0"
+description = "LabWala sidecar: Presidio PII detection, neural voices (edge-tts), document scanning (OpenCV)"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+  "presidio-analyzer>=2.2",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+  "edge-tts>=7.3.1",
+  "opencv-python-headless>=5.0.0.93",
+  "numpy>=2.2.6",
+]
+
+[tool.uv]
+package = false
