@@ -14,3 +14,9 @@ export function handle<A extends unknown[]>(fn: (...args: A) => Promise<Response
     }
   };
 }
+
+/**
+ * Redirect with a relative Location. Behind the phone HTTPS entrance or a 0.0.0.0 bind,
+ * req.url can contain an internal host (e.g. 0.0.0.0) that a phone cannot open.
+ */
+export const redirectTo = (path: string) => new NextResponse(null, { status: 307, headers: { location: path } });

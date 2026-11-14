@@ -1,3 +1,4 @@
+import { redirectTo } from "@/lib/http";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { timingSafeEqual } from "node:crypto";
@@ -6,9 +7,9 @@ import { completeConnect } from "@/lib/gmail";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const back = (q: string) => NextResponse.redirect(new URL(`/settings/gmail?${q}`, req.url));
+  const back = (q: string) => redirectTo(`/settings/gmail?${q}`);
   const user = await getSessionUser();
-  if (!user) return NextResponse.redirect(new URL("/login", req.url));
+  if (!user) return redirectTo("/login");
   const jar = await cookies();
   const expected = jar.get("gmail_oauth_state")?.value ?? "";
   jar.delete({ name: "gmail_oauth_state", path: "/api/gmail" });
